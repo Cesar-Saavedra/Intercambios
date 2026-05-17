@@ -11,16 +11,18 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import cl.duoc.ms_intercambio.dto.EnviarOfertaDto;
+import cl.duoc.ms_intercambio.dto.OfertaRespuestaDto;
 import cl.duoc.ms_intercambio.model.EstadoOferta;
 import cl.duoc.ms_intercambio.model.Oferta;
 import cl.duoc.ms_intercambio.repository.OfertaRepositorio;
-import lombok.Value;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class IntercambioServicio {
 
     @Autowired
-    private IntercambioServicio intercambioServicio;
+    private OfertaRepositorio ofertaRepositorio;
 
     @Autowired
     private RestTemplate restTemplate; 
@@ -74,7 +76,7 @@ public class IntercambioServicio {
         nueva.setFechaCreacion(LocalDateTime.now());
         nueva.setFechaRespuesta(null); // null hasta que el receptor responda
 
-        Oferta guardada = OfertaRepositorio.save(nueva);
+        Oferta guardada = ofertaRepositorio.save(nueva);
 
         // Paso 4: devolver con nombre del emisor del token
         // El nombre del receptor no lo tenemos sin llamar a ms-login
@@ -95,7 +97,7 @@ public class IntercambioServicio {
     public List<OfertaRespuestaDto> misOfertasRecibidas(Integer receptorId, String nombre) {
 
         // Buscar solo las ofertas PENDIENTES donde yo soy el receptor
-        List<Oferta> ofertasPendientes = OfertaRepositorio
+        List<Oferta> ofertasPendientes = ofertaRepositorio
                 .findByReceptorIdAndEstado(receptorId, EstadoOferta.PENDIENTE);
 
         List<OfertaRespuestaDto> listaRespuesta = new ArrayList<>();
@@ -125,7 +127,7 @@ public class IntercambioServicio {
      */
     public List<OfertaRespuestaDto> misOfertasEnviadas(Integer emisorId, String nombre) {
 
-        List<Oferta> ofertas = ofertaRepository.findByEmisorId(emisorId);
+        List<Oferta> ofertas = ofertaRepositorio.findByEmisorId(emisorId);
 
         List<OfertaRespuestaDto> listaRespuesta = new ArrayList<>();
         for (Oferta oferta : ofertas) {
@@ -162,7 +164,7 @@ public class IntercambioServicio {
                                                Integer receptorId, String nombre) {
 
         // Paso 1: buscar la oferta en la BD
-        Oferta oferta = OfertaRepositorio.findById(ofertaId)
+        Oferta oferta = ofertaRepositorio.findById(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Paso 2: verificar que el usuario autenticado sea el receptor de la oferta
@@ -180,7 +182,7 @@ public class IntercambioServicio {
         oferta.setFechaRespuesta(LocalDateTime.now());
 
         // Paso 5: guardar y devolver
-        Oferta actualizada = OfertaRepositorio.save(oferta);
+        Oferta actualizada = ofertaRepositorio.save(oferta);
         return construirRespuesta(actualizada, "Jugador #" + oferta.getEmisorId(), nombre);
     }
 
@@ -197,7 +199,7 @@ public class IntercambioServicio {
      */
     public OfertaRespuestaDto cancelarOferta(Integer ofertaId, Integer emisorId, String nombre) {
 
-        Oferta oferta = OfertaRepositorio.findById(ofertaId)
+        Oferta oferta = ofertaRepositorio.findById(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Solo el emisor puede cancelar su propia oferta
@@ -214,7 +216,7 @@ public class IntercambioServicio {
         oferta.setEstado(EstadoOferta.CANCELADA);
         oferta.setFechaRespuesta(LocalDateTime.now());
 
-        Oferta actualizada = OfertaRepositorio.save(oferta);
+        Oferta actualizada = ofertaRepositorio.save(oferta);
         return construirRespuesta(actualizada, nombre, "Jugador #" + oferta.getReceptorId());
     }
 
@@ -239,7 +241,7 @@ public class IntercambioServicio {
     public OfertaRespuestaDto completarIntercambio(Integer ofertaId, Integer usuarioId,
                                                     String nombre, String authHeader) {
 
-        Oferta oferta = OfertaRepositorio.findById(ofertaId)
+        Oferta oferta = ofertaRepositorio.findById(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Verificar que quien confirma sea el emisor o el receptor
@@ -259,7 +261,7 @@ public class IntercambioServicio {
         // Cambiar el estado a COMPLETADA
         oferta.setEstado(EstadoOferta.COMPLETADA);
         oferta.setFechaRespuesta(LocalDateTime.now());
-        Oferta completada = OfertaRepositorio.save(oferta);
+        Oferta completada = ofertaRepositorio.save(oferta);
 
         // Notificar a ms-usuarios para sumar +1 intercambio a AMBOS jugadores
         // Si ms-usuarios no responde, el intercambio igual queda completado
