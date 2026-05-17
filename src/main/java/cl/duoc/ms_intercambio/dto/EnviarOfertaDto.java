@@ -21,8 +21,7 @@ import lombok.Data;
 public class EnviarOfertaDto {
 
     private Integer receptorId;
-
+    private String solicitado;
     private String ofrecido;
-
     private String mensaje;
 }
