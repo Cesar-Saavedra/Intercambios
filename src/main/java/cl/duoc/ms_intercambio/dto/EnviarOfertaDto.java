@@ -1,5 +1,7 @@
 package cl.duoc.ms_intercambio.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /*
@@ -20,8 +22,14 @@ import lombok.Data;
 @Data
 public class EnviarOfertaDto {
 
+    @NotNull(message = "El receptor de la oferta es obligatorio")
     private Integer receptorId;
+
+    @NotBlank(message = "Debes indicar que estas solicitando")
     private String solicitado;
+
+    @NotBlank(message = "Debes indicar que estas ofreciendo")
     private String ofrecido;
+
     private String mensaje;
 }

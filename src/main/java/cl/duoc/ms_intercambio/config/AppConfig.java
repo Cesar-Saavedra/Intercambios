@@ -1,4 +1,4 @@
-package cl.duoc.ms_intercambio;
+package cl.duoc.ms_intercambio.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

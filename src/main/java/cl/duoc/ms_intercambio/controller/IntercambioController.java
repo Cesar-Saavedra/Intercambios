@@ -21,6 +21,7 @@ import cl.duoc.ms_intercambio.dto.EnviarOfertaDto;
 import cl.duoc.ms_intercambio.dto.OfertaRespuestaDto;
 import cl.duoc.ms_intercambio.security.JwtUtil;
 import cl.duoc.ms_intercambio.service.IntercambioServicio;
+import jakarta.validation.Valid;
 
 /*
  * Controlador REST de ms-intercambio.
@@ -86,7 +87,7 @@ public class IntercambioController {
     @PostMapping
     public ResponseEntity<?> enviarOferta(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestBody EnviarOfertaDto dto) {
+            @Valid @RequestBody EnviarOfertaDto dto) {
 
         String token = validarHeader(authHeader);
         if (token == null) {
