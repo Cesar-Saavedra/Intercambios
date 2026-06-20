@@ -21,6 +21,8 @@ import cl.duoc.ms_intercambio.dto.EnviarOfertaDto;
 import cl.duoc.ms_intercambio.dto.OfertaRespuestaDto;
 import cl.duoc.ms_intercambio.security.JwtUtil;
 import cl.duoc.ms_intercambio.service.IntercambioServicio;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 /*
@@ -57,6 +59,7 @@ import jakarta.validation.Valid;
  */
 @RestController
 @RequestMapping("/api/intercambios")
+@Tag(name = "Intercambios", description = "Gestión de ofertas de intercambio de cartas entre jugadores")
 public class IntercambioController {
 
     @Autowired
@@ -85,6 +88,7 @@ public class IntercambioController {
      * Respuesta 400: si falta algun campo obligatorio o te mandas la oferta a ti mismo
      */
     @PostMapping
+    @Operation(summary = "Enviar oferta", description = "Envía una oferta de intercambio de cartas a otro jugador.")
     public ResponseEntity<?> enviarOferta(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @Valid @RequestBody EnviarOfertaDto dto) {
@@ -123,6 +127,7 @@ public class IntercambioController {
      * GET http://localhost:8088/api/intercambios/recibidas
      */
     @GetMapping("/recibidas")
+    @Operation(summary = "Ofertas recibidas", description = "Devuelve las ofertas pendientes que el usuario autenticado ha recibido.")
     public ResponseEntity<?> misOfertasRecibidas(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
@@ -159,6 +164,7 @@ public class IntercambioController {
      * GET http://localhost:8088/api/intercambios/enviadas
      */
     @GetMapping("/enviadas")
+    @Operation(summary = "Ofertas enviadas", description = "Historial de todas las ofertas enviadas por el usuario autenticado.")
     public ResponseEntity<?> misOfertasEnviadas(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
@@ -199,6 +205,7 @@ public class IntercambioController {
      * Respuesta 200: la oferta con el nuevo estado (ACEPTADA o RECHAZADA)
      */
     @PutMapping("/{id}/responder")
+    @Operation(summary = "Responder oferta", description = "Acepta o rechaza una oferta recibida. Query param: acepta=true|false.")
     public ResponseEntity<?> responderOferta(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id,
@@ -237,6 +244,7 @@ public class IntercambioController {
      * PUT http://localhost:8088/api/intercambios/1/cancelar
      */
     @PutMapping("/{id}/cancelar")
+    @Operation(summary = "Cancelar oferta", description = "Cancela una oferta enviada antes de que el receptor la responda. Solo el emisor puede hacerlo.")
     public ResponseEntity<?> cancelarOferta(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id) {
@@ -279,6 +287,7 @@ public class IntercambioController {
      * PUT http://localhost:8088/api/intercambios/1/completar
      */
     @PutMapping("/{id}/completar")
+    @Operation(summary = "Completar intercambio", description = "Confirma que la entrega física de cartas se realizó. Puede hacerlo el emisor o el receptor.")
     public ResponseEntity<?> completarIntercambio(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @PathVariable Integer id) {

@@ -5,18 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import cl.duoc.ms_intercambio.client.UsuarioFeignClient;
 import cl.duoc.ms_intercambio.dto.EnviarOfertaDto;
 import cl.duoc.ms_intercambio.dto.OfertaRespuestaDto;
 import cl.duoc.ms_intercambio.model.EstadoOferta;
 import cl.duoc.ms_intercambio.model.Oferta;
 import cl.duoc.ms_intercambio.repository.OfertaRepositorio;
-import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class IntercambioServicio {
@@ -24,11 +20,9 @@ public class IntercambioServicio {
     @Autowired
     private OfertaRepositorio ofertaRepositorio;
 
+    // Cliente Feign para notificar a ms-usuarios via Eureka (sin URL hardcodeada)
     @Autowired
-    private RestTemplate restTemplate; 
-
-    @Value ("${ms.usuarios.url}")
-    private String urlMsUsuarios;
+    private UsuarioFeignClient usuarioFeignClient;
 
     // =========================================================
     // ENVIAR OFERTA DE INTERCAMBIO
@@ -282,20 +276,15 @@ public class IntercambioServicio {
      * @param usuarioId  id del jugador a notificar
      * @param authHeader header completo "Bearer eyJ..." para la peticion
      */
+    /*
+     * Notifica a ms-usuarios via Feign que el jugador completo un intercambio.
+     * ms-usuarios incrementa en 1 el contador de intercambios del perfil.
+     * Si ms-usuarios no responde, el intercambio queda igual completado.
+     */
     private void notificarIntercambioCompletado(Integer usuarioId, String authHeader) {
         try {
-            String url = urlMsUsuarios + "/api/perfiles/sumar-intercambio/" + usuarioId;
-
-            // Crear el header con el token para que ms-usuarios autorice la peticion
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", authHeader);
-            HttpEntity<Void> peticion = new HttpEntity<>(headers);
-
-            // Hacer la peticion PUT (sin body, solo incrementa el contador)
-            restTemplate.exchange(url, HttpMethod.PUT, peticion, Void.class);
-
+            usuarioFeignClient.sumarIntercambio(usuarioId, authHeader);
         } catch (Exception e) {
-            // Si ms-usuarios no responde, el intercambio queda igual completado
             System.out.println("[ms-intercambio] No se pudo notificar a ms-usuarios "
                     + "para usuario " + usuarioId + ": " + e.getMessage());
         }

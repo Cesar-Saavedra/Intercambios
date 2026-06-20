@@ -1,15 +1,14 @@
 package cl.duoc.ms_intercambio.config;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
 
+/*
+ * Configuracion general de ms-intercambios.
+ * El bean RestTemplate fue eliminado: la comunicacion con ms-usuarios
+ * ahora se hace via Feign (UsuarioFeignClient), que usa Eureka para
+ * resolver el host sin URLs hardcodeadas.
+ */
 @Configuration
 public class AppConfig {
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-    
+    // Vacio: Feign no necesita un bean RestTemplate manual.
 }
