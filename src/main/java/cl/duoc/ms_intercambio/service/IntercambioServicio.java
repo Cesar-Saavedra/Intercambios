@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import cl.duoc.ms_intercambio.client.UsuarioFeignClient;
 import cl.duoc.ms_intercambio.dto.EnviarOfertaDto;
@@ -154,11 +155,19 @@ public class IntercambioServicio {
      * @param receptorId  id del usuario autenticado (para verificar que es el receptor)
      * @param nombre      nombre del receptor (viene del token)
      */
+    /*
+     * @Transactional + bloqueo pesimista sobre la oferta: si dos requests
+     * intentan responder (o responder/cancelar) la misma oferta en paralelo,
+     * el segundo espera a que termine la transaccion del primero y ya
+     * encuentra el estado actualizado (no PENDIENTE), evitando que ambos
+     * pasen el chequeo de estado a la vez.
+     */
+    @Transactional
     public OfertaRespuestaDto responderOferta(Integer ofertaId, Boolean acepta,
                                                Integer receptorId, String nombre) {
 
-        // Paso 1: buscar la oferta en la BD
-        Oferta oferta = ofertaRepositorio.findById(ofertaId)
+        // Paso 1: buscar la oferta en la BD (bloqueada para esta transaccion)
+        Oferta oferta = ofertaRepositorio.findByIdConBloqueo(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Paso 2: verificar que el usuario autenticado sea el receptor de la oferta
@@ -191,9 +200,10 @@ public class IntercambioServicio {
      * @param emisorId  id del usuario autenticado (para verificar que es el emisor)
      * @param nombre    nombre del emisor (viene del token)
      */
+    @Transactional
     public OfertaRespuestaDto cancelarOferta(Integer ofertaId, Integer emisorId, String nombre) {
 
-        Oferta oferta = ofertaRepositorio.findById(ofertaId)
+        Oferta oferta = ofertaRepositorio.findByIdConBloqueo(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Solo el emisor puede cancelar su propia oferta
@@ -232,10 +242,11 @@ public class IntercambioServicio {
      * @param nombre      nombre del usuario (viene del token)
      * @param authHeader  header para notificar a ms-usuarios
      */
+    @Transactional
     public OfertaRespuestaDto completarIntercambio(Integer ofertaId, Integer usuarioId,
                                                     String nombre, String authHeader) {
 
-        Oferta oferta = ofertaRepositorio.findById(ofertaId)
+        Oferta oferta = ofertaRepositorio.findByIdConBloqueo(ofertaId)
                 .orElseThrow(() -> new RuntimeException("Oferta no encontrada con id: " + ofertaId));
 
         // Verificar que quien confirma sea el emisor o el receptor
