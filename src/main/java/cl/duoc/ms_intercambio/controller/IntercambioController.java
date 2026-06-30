@@ -22,6 +22,11 @@ import cl.duoc.ms_intercambio.dto.OfertaRespuestaDto;
 import cl.duoc.ms_intercambio.security.JwtUtil;
 import cl.duoc.ms_intercambio.service.IntercambioServicio;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -35,27 +40,6 @@ import jakarta.validation.Valid;
  *
  * TODOS los endpoints requieren:
  *   Header: Authorization: Bearer {token}
- *
- * -------------------------------------------------------
- * ENDPOINTS DISPONIBLES:
- * -------------------------------------------------------
- * POST /api/intercambios
- *     -> Enviar una oferta de intercambio a otro jugador
- *
- * GET /api/intercambios/recibidas
- *     -> Ver las ofertas pendientes que recibi
- *
- * GET /api/intercambios/enviadas
- *     -> Ver todas las ofertas que he enviado (historial)
- *
- * PUT /api/intercambios/{id}/responder?acepta=true|false
- *     -> Aceptar o rechazar una oferta que recibi
- *
- * PUT /api/intercambios/{id}/cancelar
- *     -> Cancelar una oferta que envie (antes de que la respondan)
- *
- * PUT /api/intercambios/{id}/completar
- *     -> Confirmar que el intercambio fisico se realizo
  */
 @RestController
 @RequestMapping("/api/intercambios")
@@ -67,30 +51,36 @@ public class IntercambioController {
 
     @Autowired JwtUtil jwtUtil;
 
-    // =========================================================
-    // POST /api/intercambios
-    // Enviar una oferta de intercambio
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     *
-     * El emisorId se extrae del token, no del body.
-     *
-     * Body JSON:
-     * {
-     *   "receptorId": 7,
-     *   "ofrecido": "Charizard ex full art (NM) + Pikachu V promo",
-     *   "solicitado": "Blastoise ex holo en buen estado",
-     *   "mensaje": "Hola! Te propongo este cambio, avísame si te interesa"
-     * }
-     *
-     * Respuesta 201: la oferta creada con estado PENDIENTE
-     * Respuesta 400: si falta algun campo obligatorio o te mandas la oferta a ti mismo
-     */
     @PostMapping
     @Operation(summary = "Enviar oferta", description = "Envía una oferta de intercambio de cartas a otro jugador.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Oferta creada con estado PENDIENTE", content = @Content(
+                    examples = @ExampleObject(name = "OfertaCreada", value = """
+                            {
+                              "id": 1,
+                              "emisorId": 5,
+                              "receptorId": 7,
+                              "ofrecido": "Charizard ex full art (NM) + Pikachu V promo",
+                              "solicitado": "Blastoise ex holo en buen estado",
+                              "mensaje": "Hola! Te propongo este cambio, avísame si te interesa",
+                              "estado": "PENDIENTE"
+                            }
+                            """))),
+            @ApiResponse(responseCode = "400", description = "Falta algún campo obligatorio o el usuario se envía la oferta a sí mismo"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido o expirado")
+    })
     public ResponseEntity<?> enviarOferta(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Datos de la oferta de intercambio", required = true,
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "receptorId": 7,
+                              "ofrecido": "Charizard ex full art (NM) + Pikachu V promo",
+                              "solicitado": "Blastoise ex holo en buen estado",
+                              "mensaje": "Hola! Te propongo este cambio, avísame si te interesa"
+                            }
+                            """)))
             @Valid @RequestBody EnviarOfertaDto dto) {
 
         String token = validarHeader(authHeader);
@@ -110,25 +100,14 @@ public class IntercambioController {
         }
     }
 
-    // =========================================================
-    // GET /api/intercambios/recibidas
-    // Ver las ofertas pendientes que recibi
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     *
-     * Devuelve solo las ofertas con estado PENDIENTE donde
-     * el usuario autenticado es el receptor.
-     * Son las que debe responder (aceptar o rechazar).
-     *
-     * Respuesta 200: lista de OfertaRespuestaDto
-     *
-     * Ejemplo en Postman:
-     * GET http://localhost:8088/api/intercambios/recibidas
-     */
     @GetMapping("/recibidas")
     @Operation(summary = "Ofertas recibidas", description = "Devuelve las ofertas pendientes que el usuario autenticado ha recibido.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de ofertas recibidas pendientes"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido o expirado")
+    })
     public ResponseEntity<?> misOfertasRecibidas(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         String token = validarHeader(authHeader);
@@ -147,25 +126,14 @@ public class IntercambioController {
         }
     }
 
-    // =========================================================
-    // GET /api/intercambios/enviadas
-    // Ver todas las ofertas que he enviado
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     *
-     * Devuelve todas las ofertas enviadas por el usuario autenticado,
-     * incluyendo todos los estados (PENDIENTE, ACEPTADA, RECHAZADA, etc.).
-     * Es el historial completo de ofertas enviadas.
-     *
-     * Respuesta 200: lista de OfertaRespuestaDto
-     *
-     * Ejemplo en Postman:
-     * GET http://localhost:8088/api/intercambios/enviadas
-     */
     @GetMapping("/enviadas")
     @Operation(summary = "Ofertas enviadas", description = "Historial de todas las ofertas enviadas por el usuario autenticado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Historial de ofertas enviadas"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido o expirado")
+    })
     public ResponseEntity<?> misOfertasEnviadas(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         String token = validarHeader(authHeader);
@@ -184,31 +152,19 @@ public class IntercambioController {
         }
     }
 
-    // =========================================================
-    // PUT /api/intercambios/{id}/responder
-    // Aceptar o rechazar una oferta recibida
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path param: id = id de la oferta a responder
-     * Query param: acepta = true (aceptar) | false (rechazar)
-     *
-     * Solo el receptor de la oferta puede responderla.
-     * Solo se puede responder si esta en estado PENDIENTE.
-     *
-     * Ejemplo en Postman (aceptar):
-     * PUT http://localhost:8088/api/intercambios/1/responder?acepta=true
-     *
-     * Ejemplo en Postman (rechazar):
-     * PUT http://localhost:8088/api/intercambios/1/responder?acepta=false
-     *
-     * Respuesta 200: la oferta con el nuevo estado (ACEPTADA o RECHAZADA)
-     */
     @PutMapping("/{id}/responder")
     @Operation(summary = "Responder oferta", description = "Acepta o rechaza una oferta recibida. Query param: acepta=true|false.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Oferta con el nuevo estado (ACEPTADA o RECHAZADA)"),
+            @ApiResponse(responseCode = "400", description = "La oferta no está en estado PENDIENTE u otro error de negocio"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o el usuario no es el receptor de la oferta")
+    })
     public ResponseEntity<?> responderOferta(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer al receptor de la oferta", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la oferta a responder", required = true, example = "1")
             @PathVariable Integer id,
+            @Parameter(description = "true para aceptar la oferta, false para rechazarla", required = true, example = "true")
             @RequestParam Boolean acepta) {
 
         String token = validarHeader(authHeader);
@@ -227,26 +183,17 @@ public class IntercambioController {
         }
     }
 
-    // =========================================================
-    // PUT /api/intercambios/{id}/cancelar
-    // Cancelar una oferta enviada (antes de que la respondan)
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path param: id = id de la oferta a cancelar
-     *
-     * Solo el emisor puede cancelar su propia oferta.
-     * Solo se puede cancelar si esta en estado PENDIENTE.
-     *
-     * Respuesta 200: la oferta con estado CANCELADA
-     *
-     * Ejemplo en Postman:
-     * PUT http://localhost:8088/api/intercambios/1/cancelar
-     */
     @PutMapping("/{id}/cancelar")
     @Operation(summary = "Cancelar oferta", description = "Cancela una oferta enviada antes de que el receptor la responda. Solo el emisor puede hacerlo.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Oferta con estado CANCELADA"),
+            @ApiResponse(responseCode = "400", description = "La oferta no está en estado PENDIENTE u otro error de negocio"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o el usuario no es el emisor de la oferta")
+    })
     public ResponseEntity<?> cancelarOferta(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}', debe pertenecer al emisor de la oferta", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la oferta a cancelar", required = true, example = "1")
             @PathVariable Integer id) {
 
         String token = validarHeader(authHeader);
@@ -265,31 +212,17 @@ public class IntercambioController {
         }
     }
 
-    // =========================================================
-    // PUT /api/intercambios/{id}/completar
-    // Confirmar que el intercambio fisico se realizo
-    // =========================================================
-    /*
-     * Header: Authorization: Bearer {token}
-     * Path param: id = id de la oferta a completar
-     *
-     * Pueden confirmarlo el emisor O el receptor.
-     * Solo se puede completar si la oferta esta en estado ACEPTADA.
-     *
-     * Al completarse:
-     * - El estado cambia a COMPLETADA.
-     * - ms-usuarios recibe notificacion para sumar +1 intercambio
-     *   en el perfil de AMBOS jugadores.
-     *
-     * Respuesta 200: la oferta con estado COMPLETADA
-     *
-     * Ejemplo en Postman:
-     * PUT http://localhost:8088/api/intercambios/1/completar
-     */
     @PutMapping("/{id}/completar")
     @Operation(summary = "Completar intercambio", description = "Confirma que la entrega física de cartas se realizó. Puede hacerlo el emisor o el receptor.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Oferta con estado COMPLETADA"),
+            @ApiResponse(responseCode = "400", description = "La oferta no está en estado ACEPTADA u otro error de negocio"),
+            @ApiResponse(responseCode = "401", description = "Token ausente, inválido, o el usuario no participa en la oferta")
+    })
     public ResponseEntity<?> completarIntercambio(
+            @Parameter(description = "Token JWT con formato 'Bearer {token}'", required = true)
             @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Parameter(description = "ID de la oferta a completar", required = true, example = "1")
             @PathVariable Integer id) {
 
         String token = validarHeader(authHeader);
